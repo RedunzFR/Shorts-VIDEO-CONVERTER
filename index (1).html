@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>YouTube Shorts Converter</title>
+<style>
+  *{box-sizing:border-box;font-family:"Poppins",sans-serif}
+  body{
+    margin:0;height:100vh;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;background:#000;color:#fff;overflow:hidden;
+    position:relative;
+  }
+  body::before{
+    content:"";position:absolute;top:0;left:0;width:200%;height:200%;
+    background:radial-gradient(circle at 30% 30%,rgba(255,0,0,.3),transparent 50%),
+               radial-gradient(circle at 70% 70%,rgba(0,255,255,.3),transparent 50%);
+    animation:moveGlow 10s infinite alternate ease-in-out;z-index:-1;filter:blur(80px)
+  }
+  @keyframes moveGlow{
+    0%{transform:translate(-10%,-10%) scale(1)}
+    100%{transform:translate(10%,10%) scale(1.1)}
+  }
+  h2{
+    font-size:2.2rem;text-align:center;color:#ff0000;
+    text-shadow:0 0 25px #ff0000;margin-bottom:30px;animation:fadeInDown 1s ease
+  }
+  @keyframes fadeInDown{
+    from{opacity:0;transform:translateY(-20px)}
+    to{opacity:1;transform:translateY(0)}
+  }
+  .converter{
+    background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);
+    box-shadow:0 0 25px rgba(255,0,0,.3);border-radius:20px;padding:40px;
+    width:90%;max-width:480px;text-align:center;backdrop-filter:blur(10px);
+    animation:fadeInUp 1s ease
+  }
+  @keyframes fadeInUp{
+    from{opacity:0;transform:translateY(20px)}
+    to{opacity:1;transform:translateY(0)}
+  }
+  input{
+    width:100%;padding:12px 16px;border:none;border-radius:10px;font-size:16px;
+    margin-bottom:15px;outline:none;background:rgba(255,255,255,.1);color:#fff;
+    transition:box-shadow .3s,background .3s
+  }
+  input:focus{box-shadow:0 0 15px #ff0000;background:rgba(255,255,255,.15)}
+  button{
+    background:linear-gradient(90deg,#ff0000,#cc0000);border:none;border-radius:10px;
+    padding:12px 25px;font-size:16px;cursor:pointer;color:white;font-weight:600;
+    transition:all .3s ease;box-shadow:0 0 20px #ff0000
+  }
+  button:hover{
+    background:linear-gradient(90deg,#ff3333,#ff0000);transform:scale(1.05);
+    box-shadow:0 0 25px #ff3333
+  }
+  #output{margin-top:20px;word-break:break-all;font-size:1.1rem;color:#00ffcc}
+  a{color:#00ffcc;text-decoration:none;transition:.3s}
+  a:hover{color:#fff;text-shadow:0 0 15px #00ffff}
+  .copy-btn{
+    background:#00ffcc;color:#000;border:none;padding:8px 18px;border-radius:8px;
+    cursor:pointer;font-weight:bold;margin-top:10px;transition:all .3s ease
+  }
+  .copy-btn:hover{background:#00ffaa;transform:scale(1.05)}
+
+  /* === Options Menu === */
+  .options-container{
+    position:fixed;top:20px;right:20px;z-index:1000;
+    display:flex;flex-direction:column;align-items:flex-end;
+  }
+  .options-btn{
+    background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);
+    color:#fff;padding:10px 18px;border-radius:8px;cursor:pointer;
+    font-weight:bold;transition:all .3s ease
+  }
+  .options-btn:hover{background:rgba(255,255,255,.2)}
+  .dropdown{
+    margin-top:10px;background:rgba(0,0,0,.9);border:1px solid rgba(255,255,255,.1);
+    border-radius:10px;overflow:hidden;opacity:0;transform:translateY(-10px);
+    pointer-events:none;transition:all .3s ease;width:160px;
+  }
+  .dropdown.active{
+    opacity:1;transform:translateY(0);pointer-events:auto
+  }
+  .dropdown button{
+    width:100%;border:none;background:transparent;color:#fff;
+    padding:12px;cursor:pointer;font-size:15px;text-align:left;
+    transition:all .3s ease
+  }
+  .dropdown button:hover{
+    background:rgba(255,0,0,.4)
+  }
+</style>
+</head>
+<body>
+  <div class="options-container">
+    <button class="options-btn" id="optionsToggle">⚙️ Options</button>
+    <div class="dropdown" id="optionsDropdown">
+      <button data-mode="link">🔗 Link Only</button>
+      <button data-mode="youtube">▶️ Link to YouTube</button>
+    </div>
+  </div>
+
+  <h2>YouTube Shorts ➜ Video Converter</h2>
+  <div class="converter">
+    <input type="text" id="shortsLink" placeholder="Paste your YouTube Shorts link here..." />
+    <button id="convertBtn">Convert</button>
+    <p id="output"></p>
+  </div>
+
+  <textarea id="hiddenCopyArea" style="position:absolute;left:-9999px;top:-9999px;"></textarea>
+
+<script>
+  const inputEl = document.getElementById("shortsLink");
+  const outputEl = document.getElementById("output");
+  const convertBtn = document.getElementById("convertBtn");
+  const hiddenArea = document.getElementById("hiddenCopyArea");
+  const optionsBtn = document.getElementById("optionsToggle");
+  const dropdown = document.getElementById("optionsDropdown");
+  let currentMode = "link"; // default mode
+
+  optionsBtn.addEventListener("click", () => {
+    dropdown.classList.toggle("active");
+  });
+
+  dropdown.addEventListener("click", (e) => {
+    if (e.target.dataset.mode) {
+      currentMode = e.target.dataset.mode;
+      dropdown.classList.remove("active");
+      optionsBtn.textContent = `⚙️ ${currentMode === "link" ? "Link Only" : "Link to YouTube"}`;
+    }
+  });
+
+  convertBtn.addEventListener("click", () => {
+    const input = inputEl.value.trim();
+    const match = input.match(/shorts\/([a-zA-Z0-9_-]{11})/);
+    if (match && match[1]) {
+      const videoId = match[1];
+      const convertedLink = `https://youtube.com/watch?v=${videoId}`;
+      
+      if (currentMode === "youtube") {
+        window.open(convertedLink, "_blank");
+      } else {
+        outputEl.innerHTML = `
+          ✅ Converted Link: <a href="${convertedLink}" target="_blank">${convertedLink}</a><br>
+          <button class="copy-btn" data-link="${convertedLink}">Copy Link</button>
+        `;
+      }
+    } else {
+      outputEl.textContent = "⚠️ Invalid Shorts link. Please check and try again.";
+    }
+  });
+
+  document.addEventListener("click", e => {
+    if (e.target.classList.contains("copy-btn")) {
+      const link = e.target.getAttribute("data-link");
+      copyToClipboard(link, e.target);
+    }
+  });
+
+  function copyToClipboard(text, button) {
+    // Clipboard API first
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text).then(() => showCopied(button))
+      .catch(() => fallbackCopy(text, button));
+    } else {
+      fallbackCopy(text, button);
+    }
+  }
+
+  function fallbackCopy(text, button) {
+    hiddenArea.value = text;
+    hiddenArea.select();
+    document.execCommand("copy");
+    showCopied(button);
+  }
+
+  function showCopied(button) {
+    button.textContent = "Copied!";
+    button.style.background = "#00ffaa";
+    setTimeout(() => {
+      button.textContent = "Copy Link";
+      button.style.background = "#00ffcc";
+    }, 1500);
+  }
+</script>
+</body>
+</html>
